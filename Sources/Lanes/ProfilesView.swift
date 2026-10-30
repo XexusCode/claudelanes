@@ -1,0 +1,182 @@
+import LanesCore
+import SwiftUI
+
+struct ProfilesView: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var selection: UUID?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                List(selection: $selection) {
+                    ForEach(model.profiles) { profile in
+                        HStack(spacing: 8) {
+                            Image(nsImage: profile.icon(size: 20))
+                            Text(profile.name)
+                            Spacer()
+                            if model.isRunning(profile) {
+                                Circle().fill(.green).frame(width: 7, height: 7)
+                                    .help("Open")
+                            }
+                        }
+                        .tag(profile.id)
+                    }
+                    .onMove { model.move(from: $0, to: $1) }
+                }
+                Divider()
+                HStack {
+                    Button {
+                        selection = model.addProfile().id
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Add profile")
+                    Spacer()
+                }
+                .padding(8)
+            }
+            .frame(width: 200)
+
+            Divider()
+
+            Group {
+                if let id = selection, let profile = model.profiles.first(where: { $0.id == id }) {
+                    ProfileEditor(profile: profile)
+                        .id(profile.id)
+                } else {
+                    VStack(spacing: 10) {
+                        Image(systemName: "square.stack.3d.up")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.secondary)
+                        Text(model.profiles.isEmpty ? "Add a profile for each Claude account." : "Select a profile.")
+                            .foregroundStyle(.secondary)
+                        if model.profiles.isEmpty {
+                            Button("Add Profile") { selection = model.addProfile(name: "Personal").id }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(width: 380)
+        }
+        .frame(height: 360)
+        .onAppear { if selection == nil { selection = model.profiles.first?.id } }
+        .alert("Lanes", isPresented: Binding(
+            get: { model.errorMessage != nil },
+            set: { if !$0 { model.errorMessage = nil } }
+        )) {
+            Button("OK") { model.errorMessage = nil }
+        } message: {
+            Text(model.errorMessage ?? "")
+        }
+    }
+}
+
+struct ProfileEditor: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var draft: Profile
+    @State private var confirmDelete = false
+    @State private var deleteData = false
+
+    init(profile: Profile) {
+        _draft = State(initialValue: profile)
+    }
+
+    private var running: Bool { model.isRunning(draft) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                Image(nsImage: draft.icon(size: 64))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(draft.launcherName).font(.headline)
+                    Text(running ? "Open" : "Not running")
+                        .font(.subheadline)
+                        .foregroundStyle(running ? .green : .secondary)
+                }
+            }
+
+            Form {
+                TextField("Name", text: $draft.name)
+                    .onSubmit(save)
+                LabeledContent("Colour") {
+                    HStack(spacing: 6) {
+                        ForEach(ProfileColor.palette, id: \.self) { hex in
+                            Swatch(hex: hex, selected: draft.colorHex.uppercased() == hex) {
+                                draft.colorHex = hex
+                                save()
+                            }
+                        }
+                    }
+                }
+            }
+            .formStyle(.columns)
+
+            HStack {
+                Button(running ? "Bring to Front" : "Open") {
+                    save()
+                    model.open(draft)
+                }
+                .keyboardShortcut(.defaultAction)
+                if running {
+                    Button("Quit") { model.quit(draft) }
+                }
+                Button("Show Launcher") { model.revealLauncher(draft) }
+                Spacer()
+                Button("Delete…", role: .destructive) { confirmDelete = true }
+            }
+
+            Text("The launcher lives in ~/Applications/Lanes. Drag it to the Dock to open this account directly.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .onDisappear(perform: save)
+        .sheet(isPresented: $confirmDelete) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Delete “\(draft.name)”?").font(.headline)
+                Text("Its launcher is removed. Your session stays on disk unless you also delete its data.")
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Also move its session data to the Trash", isOn: $deleteData)
+                HStack {
+                    Spacer()
+                    Button("Cancel") { confirmDelete = false }
+                        .keyboardShortcut(.cancelAction)
+                    Button("Delete", role: .destructive) {
+                        confirmDelete = false
+                        model.delete(draft, deleteData: deleteData)
+                    }
+                }
+            }
+            .padding(20)
+            .frame(width: 360)
+        }
+    }
+
+    private func save() {
+        guard let current = model.profiles.first(where: { $0.id == draft.id }),
+              current.name != draft.name || current.colorHex != draft.colorHex else { return }
+        model.update(draft)
+    }
+}
+
+private struct Swatch: View {
+    let hex: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let c = ProfileColor.components(hex) ?? (0, 0, 0)
+        Button(action: action) {
+            Circle()
+                .fill(Color(.sRGB, red: c.red, green: c.green, blue: c.blue))
+                .frame(width: 20, height: 20)
+                .overlay(Circle().strokeBorder(.primary.opacity(selected ? 0.8 : 0), lineWidth: 2).padding(-3))
+        }
+        .buttonStyle(.plain)
+        .help(hex)
+    }
+}
