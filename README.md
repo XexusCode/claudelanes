@@ -33,6 +33,7 @@ re-signs Claude, and your normal Claude stays as it is.
 With [Homebrew](https://brew.sh):
 
 ```sh
+brew trust --cask xexuscode/tap/claudelanes   # Homebrew 7+ asks you to trust third-party casks once
 brew install --cask xexuscode/tap/claudelanes
 ```
 
@@ -107,7 +108,8 @@ historial. No cambia, copia ni vuelve a firmar Claude, y tu Claude normal no se 
   queda intacto como copia de seguridad.
 - Si el perfil ya está abierto, lo trae al frente en vez de abrir otro encima de los mismos datos.
 
-**Instalar:** `brew install --cask xexuscode/tap/claudelanes`, o descarga el zip de *Releases* y
+**Instalar:** `brew trust --cask xexuscode/tap/claudelanes` y luego
+`brew install --cask xexuscode/tap/claudelanes`, o descarga el zip de *Releases* y
 mueve `ClaudeLanes.app` a Aplicaciones. La app no está notarizada: la primera vez ábrela, ve a
 **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**.
 
