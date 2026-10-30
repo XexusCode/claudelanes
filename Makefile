@@ -1,4 +1,4 @@
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
 
 .PHONY: build test app install zip clean
 
@@ -12,14 +12,14 @@ app:
 	VERSION=$(VERSION) ./scripts/build-app.sh
 
 install: app
-	@if pgrep -xq Lanes; then osascript -e 'tell application id "io.github.xexuscode.lanes" to quit' || true; sleep 1; fi
-	rm -rf /Applications/Lanes.app
-	cp -R dist/Lanes.app /Applications/Lanes.app
-	@echo "Installed /Applications/Lanes.app"
+	@if pgrep -xq ClaudeLanes; then osascript -e 'tell application id "io.github.xexuscode.claudelanes" to quit' || true; sleep 1; fi
+	rm -rf /Applications/ClaudeLanes.app
+	cp -R dist/ClaudeLanes.app /Applications/ClaudeLanes.app
+	@echo "Installed /Applications/ClaudeLanes.app"
 
 zip: app
-	cd dist && rm -f Lanes-$(VERSION).zip && ditto -c -k --keepParent Lanes.app Lanes-$(VERSION).zip
-	@echo "dist/Lanes-$(VERSION).zip"
+	cd dist && rm -f ClaudeLanes-$(VERSION).zip && ditto -c -k --keepParent ClaudeLanes.app ClaudeLanes-$(VERSION).zip
+	@echo "dist/ClaudeLanes-$(VERSION).zip"
 
 clean:
 	rm -rf .build dist

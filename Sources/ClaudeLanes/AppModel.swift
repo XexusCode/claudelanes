@@ -23,7 +23,20 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     private let windowLabels = WindowLabels()
 
-    init(paths: LanesPaths = .standard) {
+    init() {
+        // Profiles made before the rename live in the old "Lanes" folders. Move them once
+        // nothing runs from there; until then keep using the old folders.
+        var paths = LanesPaths.standard
+        var migrationNote: String?
+        do {
+            if try paths.migrate(from: .legacy, isRunning: LanesPaths.hasRunningProfile(in:)) == .waitingForProfilesToQuit {
+                paths = .legacy
+                migrationNote = "Quit your open profiles and reopen ClaudeLanes to finish moving them to the new folder."
+            }
+        } catch {
+            paths = .legacy
+            migrationNote = "Could not move your profiles to the new folder: \(error.localizedDescription)"
+        }
         self.paths = paths
         self.store = ProfileStore(paths: paths)
         do {
@@ -31,7 +44,8 @@ final class AppModel: ObservableObject {
         } catch {
             errorMessage = "Could not read profiles: \(error.localizedDescription)"
         }
-        // Rebuild launchers so they always carry the helper from this version of Lanes.
+        if let migrationNote { errorMessage = migrationNote }
+        // Rebuild launchers so they always carry the helper from this version.
         for profile in profiles { _ = try? launcher?.install(for: profile) }
         windowLabels.isEnabled = labelWindows
         refreshRunning()
@@ -62,6 +76,33 @@ final class AppModel: ObservableObject {
         updated.colorHex = profile.colorHex
         profiles[index] = updated
         persist(updated)
+    }
+
+    /// Creates a profile from the normal Claude's data. Returns the new profile, or nil
+    /// (with `errorMessage` set) if the copy failed.
+    func importDefaultClaude(name: String) async -> Profile? {
+        let profile = Profile(name: ProfileName.unique(name, among: profiles),
+                              colorHex: ProfileColor.next(after: profiles.map(\.colorHex)))
+        let importer = ProfileImporter(paths: paths)
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                try importer.importDefaultData(into: profile)
+            }.value
+        } catch {
+            errorMessage = "Could not import: \(error.localizedDescription)"
+            return nil
+        }
+        profiles.append(profile)
+        persist(profile)
+        return profile
+    }
+
+    var canImportDefaultClaude: Bool { ProfileImporter(paths: paths).hasSourceData }
+
+    func quitDefaultClaude() {
+        if let pid = ClaudeProcessScanner.running().first(where: { $0.userDataDirectory == nil })?.pid {
+            ClaudeLauncher.quit(pid: pid)
+        }
     }
 
     func delete(_ profile: Profile, deleteData: Bool) {
@@ -160,7 +201,7 @@ final class AppModel: ObservableObject {
     /// The `lanes-launcher` helper shipped next to the Lanes executable.
     private var launcher: LauncherBundle? {
         guard let dir = Bundle.main.executableURL?.deletingLastPathComponent() else { return nil }
-        let candidates = ["lanes-launcher", "LanesLauncher"].map { dir.appendingPathComponent($0) }
+        let candidates = ["claudelanes-launcher", "LanesLauncher"].map { dir.appendingPathComponent($0) }
         guard let helper = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) else {
             return nil
         }

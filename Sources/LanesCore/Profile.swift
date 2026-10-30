@@ -28,8 +28,8 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         String(id.uuidString.replacingOccurrences(of: "-", with: "").prefix(12)).lowercased()
     }
 
-    /// Display name of the launcher app, e.g. "Personal (Lanes)". It names Lanes, not
-    /// Claude, so launchers are not mistaken for Anthropic apps.
+    /// Display name of the launcher app, e.g. "Personal (ClaudeLanes)". The suffix makes
+    /// clear it is a ClaudeLanes launcher, not Anthropic's own app.
     public var launcherName: String {
         Self.launcherName(for: name, fallback: shortID)
     }
@@ -39,7 +39,7 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return (safe.isEmpty ? fallback : safe) + " (Lanes)"
+        return (safe.isEmpty ? fallback : safe) + " (ClaudeLanes)"
     }
 }
 

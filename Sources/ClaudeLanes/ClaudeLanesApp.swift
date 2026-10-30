@@ -2,11 +2,11 @@ import AppKit
 import SwiftUI
 
 @main
-struct LanesApp: App {
+struct ClaudeLanesApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        MenuBarExtra("Lanes", systemImage: "square.stack.3d.up") {
+        MenuBarExtra("ClaudeLanes", systemImage: "square.stack.3d.up") {
             MenuContent()
                 .environmentObject(delegate.model)
         }
@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let window = NSWindow(contentViewController: NSHostingController(
                 rootView: ProfilesView().environmentObject(model)
             ))
-            window.title = "Lanes"
+            window.title = "ClaudeLanes"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
             window.center()

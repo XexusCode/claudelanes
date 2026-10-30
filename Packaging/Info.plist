@@ -5,17 +5,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Lanes</string>
+	<string>ClaudeLanes</string>
 	<key>CFBundleExecutable</key>
-	<string>Lanes</string>
+	<string>ClaudeLanes</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>io.github.xexuscode.lanes</string>
+	<string>io.github.xexuscode.claudelanes</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Lanes</string>
+	<string>ClaudeLanes</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

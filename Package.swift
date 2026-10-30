@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "Lanes",
+    name: "ClaudeLanes",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "Lanes", targets: ["Lanes"]),
+        .executable(name: "ClaudeLanes", targets: ["ClaudeLanes"]),
     ],
     targets: [
         .target(name: "LanesCore"),
-        .executableTarget(name: "Lanes", dependencies: ["LanesCore"]),
+        .executableTarget(name: "ClaudeLanes", dependencies: ["LanesCore"]),
         .executableTarget(name: "LanesLauncher", dependencies: ["LanesCore"]),
         .testTarget(name: "LanesCoreTests", dependencies: ["LanesCore"]),
     ],
