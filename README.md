@@ -5,7 +5,7 @@ its own window, at the same time. Free and open source.
 
 *[Español más abajo](#español)*
 
-<p align="center"><img src="docs/profiles-window.png" width="600" alt="ClaudeLanes profiles window with a Personal profile"></p>
+<p align="center"><img src="docs/demo.gif" width="800" alt="Two Claude accounts open side by side, each window labelled with its ClaudeLanes profile"></p>
 
 > ClaudeLanes is an independent, unofficial project. It is not made by, affiliated with or
 > endorsed by Anthropic. "Claude" is a trademark of Anthropic. ClaudeLanes is for using your own
@@ -29,6 +29,8 @@ re-signs Claude, and your normal Claude stays as it is.
 - **No duplicates** — opening a profile that is already running brings its window to the front
   instead of starting a second process on the same data, which could corrupt it.
 - **Open at login** — optional.
+
+<p align="center"><img src="docs/profiles-window.png" width="560" alt="ClaudeLanes profiles window"></p>
 
 ## Install
 
