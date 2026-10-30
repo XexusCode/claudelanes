@@ -39,14 +39,14 @@ struct MenuContent: View {
         Button("Manage Profiles…") { showProfiles() }
             .keyboardShortcut(",")
         Toggle("Label Profile Windows", isOn: $model.labelWindows)
-        Toggle("Open Lanes at Login", isOn: Binding(
+        Toggle("Open ClaudeLanes at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }
         ))
 
         Divider()
 
-        Button("Quit Lanes") { NSApplication.shared.terminate(nil) }
+        Button("Quit ClaudeLanes") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
 

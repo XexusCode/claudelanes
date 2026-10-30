@@ -72,7 +72,7 @@ public struct LauncherBundle: Sendable {
     static func infoPlist(for profile: Profile, dataDirectory: URL) -> [String: Any] {
         [
             "CFBundleExecutable": "launcher",
-            "CFBundleIdentifier": "io.github.xexuscode.lanes.launcher." + profile.shortID,
+            "CFBundleIdentifier": "io.github.xexuscode.claudelanes.launcher." + profile.shortID,
             "CFBundleName": profile.launcherName,
             "CFBundleDisplayName": profile.launcherName,
             "CFBundleIconFile": "AppIcon",

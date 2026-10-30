@@ -24,7 +24,7 @@ private func tempPaths() throws -> LanesPaths {
     }
 
     @Test func launcherNameStripsPathCharacters() {
-        #expect(Profile(name: "A/B: C", colorHex: "#000000").launcherName == "A-B- C (Lanes)")
+        #expect(Profile(name: "A/B: C", colorHex: "#000000").launcherName == "A-B- C (ClaudeLanes)")
     }
 
     @Test func uniqueNamesIgnoreCaseAndPathCharacters() {
@@ -103,18 +103,18 @@ private func tempPaths() throws -> LanesPaths {
 
         let app = try launcher.install(for: profile)
         let fm = FileManager.default
-        #expect(app.lastPathComponent == "Personal (Lanes).app")
+        #expect(app.lastPathComponent == "Personal (ClaudeLanes).app")
         #expect(fm.isExecutableFile(atPath: app.appendingPathComponent("Contents/MacOS/launcher").path))
         #expect(fm.fileExists(atPath: app.appendingPathComponent("Contents/Resources/AppIcon.icns").path))
         #expect(fm.fileExists(atPath: paths.dataDirectory(for: profile).path))
 
         let info = try #require(NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist")))
         #expect(info[LauncherBundle.dataDirectoryKey] as? String == paths.dataDirectory(for: profile).path)
-        #expect(info["CFBundleIdentifier"] as? String == "io.github.xexuscode.lanes.launcher." + profile.shortID)
+        #expect(info["CFBundleIdentifier"] as? String == "io.github.xexuscode.claudelanes.launcher." + profile.shortID)
 
         profile.name = "Casa"
         let renamed = try launcher.install(for: profile)
-        #expect(renamed.lastPathComponent == "Casa (Lanes).app")
+        #expect(renamed.lastPathComponent == "Casa (ClaudeLanes).app")
         #expect(!fm.fileExists(atPath: app.path))
 
         try launcher.uninstall(for: profile)
@@ -141,5 +141,83 @@ private func tempPaths() throws -> LanesPaths {
         )
         #expect(args == ["-n", "-a", "/Volumes/My Apps/Claude.app",
                          "--args", "--user-data-dir=/tmp/data dir"])
+    }
+}
+
+@Suite struct ImportTests {
+    private func makeSource() throws -> URL {
+        let source = FileManager.default.temporaryDirectory.appendingPathComponent("claude-src-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: source.appendingPathComponent("Local Storage"), withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: source.appendingPathComponent("Local State"))
+        try Data("chat".utf8).write(to: source.appendingPathComponent("Local Storage/leveldb.log"))
+        try Data("x".utf8).write(to: source.appendingPathComponent("SingletonLock"))
+        return source
+    }
+
+    @Test func copiesDataSkipsLocksAndKeepsTheOriginal() throws {
+        let source = try makeSource()
+        let paths = try tempPaths()
+        let profile = Profile(name: "Work", colorHex: "#3E63DD")
+        try ProfileImporter(paths: paths, source: source).importDefaultData(into: profile, isClaudeRunning: { false })
+
+        let dest = paths.dataDirectory(for: profile)
+        let fm = FileManager.default
+        #expect(try String(contentsOf: dest.appendingPathComponent("Local Storage/leveldb.log"), encoding: .utf8) == "chat")
+        #expect(fm.fileExists(atPath: dest.appendingPathComponent("Local State").path))
+        #expect(!fm.fileExists(atPath: dest.appendingPathComponent("SingletonLock").path))
+        #expect(fm.fileExists(atPath: source.appendingPathComponent("Local Storage/leveldb.log").path))
+    }
+
+    @Test func refusesWhileClaudeIsRunning() throws {
+        let importer = ProfileImporter(paths: try tempPaths(), source: try makeSource())
+        #expect(throws: ProfileImporter.ImportError.self) {
+            try importer.importDefaultData(into: Profile(name: "Work", colorHex: "#000000"), isClaudeRunning: { true })
+        }
+    }
+
+    @Test func refusesToOverwriteAProfileWithData() throws {
+        let paths = try tempPaths()
+        let profile = Profile(name: "Work", colorHex: "#000000")
+        let dest = paths.dataDirectory(for: profile)
+        try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: dest.appendingPathComponent("Cookies"))
+        let importer = ProfileImporter(paths: paths, source: try makeSource())
+        #expect(throws: ProfileImporter.ImportError.self) {
+            try importer.importDefaultData(into: profile, isClaudeRunning: { false })
+        }
+        #expect(try String(contentsOf: dest.appendingPathComponent("Cookies"), encoding: .utf8) == "keep")
+    }
+
+    @Test func nothingToImportWithoutClaudeData() throws {
+        let empty = FileManager.default.temporaryDirectory.appendingPathComponent("empty-\(UUID().uuidString)")
+        let importer = ProfileImporter(paths: try tempPaths(), source: empty)
+        #expect(!importer.hasSourceData)
+    }
+}
+
+@Suite struct MigrationTests {
+    @Test func movesLegacyFoldersAndKeepsData() throws {
+        let legacy = try tempPaths()
+        let current = try tempPaths()
+        let profile = Profile(name: "Personal", colorHex: "#000000")
+        try ProfileStore(paths: legacy).save([profile])
+        try FileManager.default.createDirectory(at: legacy.dataDirectory(for: profile), withIntermediateDirectories: true)
+        try Data("session".utf8).write(to: legacy.dataDirectory(for: profile).appendingPathComponent("Cookies"))
+        try FileManager.default.createDirectory(at: legacy.launchersDirectory, withIntermediateDirectories: true)
+
+        #expect(try current.migrate(from: legacy, isRunning: { _ in false }) == .migrated)
+        #expect(try ProfileStore(paths: current).load().map(\.id) == [profile.id])
+        #expect(try String(contentsOf: current.dataDirectory(for: profile).appendingPathComponent("Cookies"), encoding: .utf8) == "session")
+        #expect(!FileManager.default.fileExists(atPath: legacy.supportDirectory.path))
+        #expect(!FileManager.default.fileExists(atPath: legacy.launchersDirectory.path))
+        #expect(try current.migrate(from: legacy, isRunning: { _ in false }) == .nothingToDo)
+    }
+
+    @Test func waitsWhileAProfileRunsFromTheOldFolder() throws {
+        let legacy = try tempPaths()
+        let current = try tempPaths()
+        try ProfileStore(paths: legacy).save([])
+        #expect(try current.migrate(from: legacy, isRunning: { _ in true }) == .waitingForProfilesToQuit)
+        #expect(FileManager.default.fileExists(atPath: legacy.supportDirectory.path))
     }
 }

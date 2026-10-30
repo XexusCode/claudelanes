@@ -4,6 +4,7 @@ import SwiftUI
 struct ProfilesView: View {
     @EnvironmentObject private var model: AppModel
     @State private var selection: UUID?
+    @State private var showImport = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -25,12 +26,15 @@ struct ProfilesView: View {
                 }
                 Divider()
                 HStack {
-                    Button {
-                        selection = model.addProfile().id
+                    Menu {
+                        Button("New Profile") { selection = model.addProfile().id }
+                        Button("Import from Current Claude…") { showImport = true }
+                            .disabled(!model.canImportDefaultClaude)
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .buttonStyle(.borderless)
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                     .help("Add profile")
                     Spacer()
                 }
@@ -53,6 +57,10 @@ struct ProfilesView: View {
                             .foregroundStyle(.secondary)
                         if model.profiles.isEmpty {
                             Button("Add Profile") { selection = model.addProfile(name: "Personal").id }
+                            if model.canImportDefaultClaude {
+                                Button("Import from Current Claude…") { showImport = true }
+                                    .buttonStyle(.link)
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -62,7 +70,11 @@ struct ProfilesView: View {
         }
         .frame(height: 360)
         .onAppear { if selection == nil { selection = model.profiles.first?.id } }
-        .alert("Lanes", isPresented: Binding(
+        .sheet(isPresented: $showImport) {
+            ImportSheet { selection = $0.id }
+                .environmentObject(model)
+        }
+        .alert("ClaudeLanes", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
         )) {
@@ -127,7 +139,7 @@ struct ProfileEditor: View {
                 Button("Delete…", role: .destructive) { confirmDelete = true }
             }
 
-            Text("The launcher lives in ~/Applications/Lanes. Drag it to the Dock to open this account directly.")
+            Text("The launcher lives in ~/Applications/ClaudeLanes. Drag it to the Dock to open this account directly.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -160,6 +172,59 @@ struct ProfileEditor: View {
         guard let current = model.profiles.first(where: { $0.id == draft.id }),
               current.name != draft.name || current.colorHex != draft.colorHex else { return }
         model.update(draft)
+    }
+}
+
+/// Turns the normal Claude's sign-in, settings and history into a new profile.
+private struct ImportSheet: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = "Work"
+    @State private var importing = false
+    let onImported: (Profile) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Import from Current Claude").font(.headline)
+            Text("Copies your current Claude's sign-in, settings and history into a new profile. Your normal Claude keeps its own data as a backup.")
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("Profile name", text: $name)
+            if model.defaultClaudeRunning {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text("Claude is open. Quit it first so its data is not copied half-written. Save anything you are working on.")
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Quit Claude") { model.quitDefaultClaude() }
+            }
+            HStack {
+                if importing {
+                    ProgressView().controlSize(.small)
+                    Text("Copying…").font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(importing)
+                Button("Import") {
+                    importing = true
+                    Task {
+                        let profile = await model.importDefaultClaude(name: name)
+                        importing = false
+                        if let profile {
+                            onImported(profile)
+                            dismiss()
+                        }
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(importing || model.defaultClaudeRunning
+                          || name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 400)
     }
 }
 
