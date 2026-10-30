@@ -5,6 +5,8 @@ its own window, at the same time. Free and open source.
 
 *[Español más abajo](#español)*
 
+<p align="center"><img src="docs/profiles-window.png" width="600" alt="ClaudeLanes profiles window with a Personal profile"></p>
+
 > ClaudeLanes is an independent, unofficial project. It is not made by, affiliated with or
 > endorsed by Anthropic. "Claude" is a trademark of Anthropic. ClaudeLanes is for using your own
 > legitimate accounts, not for sharing credentials.
